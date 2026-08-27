@@ -1,0 +1,223 @@
+schema_version: 1
+profile_id: windowed_1111x654
+game: darkest_dungeon_1
+language: en
+display_mode: windowed
+coordinate_space: captured_window_normalized
+reference_size:
+  width: 1111
+  height: 654
+notes: >
+  Calibration for a player-confirmed 1111x654 windowed capture. Child region
+  x/y/width/height values are normalized to their relative_to parent, or to
+  the full captured image when relative_to is omitted. game_frame is the 16:9
+  client inside the Windows 11 title bar and resize border (8,30,1095x616).
+  Hero ranks run left to right 4-3-2-1; enemy ranks run left to right 1-2-3-4.
+  Health, skill, Move, and round-counter rectangles were fitted on battle screenshot
+  capture_20260820T030016Z.png. The action bar contains four equipped combat-skill
+  icons plus the Move action. Status-icon regions are omitted until a screenshot
+  shows Bleed, Blight, Stun, Buff, or Debuff icons. Do not commit raw game
+  screenshots.
+regions:
+  game_frame:
+    validation_status: confirmed
+    x: 0.007201
+    y: 0.045872
+    width: 0.985599
+    height: 0.941896
+  combat_area:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.030000
+    y: 0.100000
+    width: 0.940000
+    height: 0.720000
+  heroes:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.040000
+    y: 0.280000
+    width: 0.440000
+    height: 0.420000
+  hero_rank_4:
+    validation_status: confirmed
+    relative_to: heroes
+    x: 0.000000
+    y: 0.000000
+    width: 0.250000
+    height: 1.000000
+  hero_rank_3:
+    validation_status: confirmed
+    relative_to: heroes
+    x: 0.250000
+    y: 0.000000
+    width: 0.250000
+    height: 1.000000
+  hero_rank_2:
+    validation_status: confirmed
+    relative_to: heroes
+    x: 0.500000
+    y: 0.000000
+    width: 0.250000
+    height: 1.000000
+  hero_rank_1:
+    validation_status: confirmed
+    relative_to: heroes
+    x: 0.750000
+    y: 0.000000
+    width: 0.250000
+    height: 1.000000
+  enemies:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.520000
+    y: 0.280000
+    width: 0.440000
+    height: 0.420000
+  enemy_rank_1:
+    validation_status: confirmed
+    relative_to: enemies
+    x: 0.000000
+    y: 0.000000
+    width: 0.250000
+    height: 1.000000
+  enemy_rank_2:
+    validation_status: confirmed
+    relative_to: enemies
+    x: 0.250000
+    y: 0.000000
+    width: 0.250000
+    height: 1.000000
+  enemy_rank_3:
+    validation_status: confirmed
+    relative_to: enemies
+    x: 0.500000
+    y: 0.000000
+    width: 0.250000
+    height: 1.000000
+  enemy_rank_4:
+    validation_status: confirmed
+    relative_to: enemies
+    x: 0.750000
+    y: 0.000000
+    width: 0.250000
+    height: 1.000000
+  hero_health_rank_4:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.113242
+    y: 0.642857
+    width: 0.058447
+    height: 0.029221
+  hero_health_rank_3:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.203653
+    y: 0.642857
+    width: 0.058447
+    height: 0.029221
+  hero_health_rank_2:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.290411
+    y: 0.642857
+    width: 0.059361
+    height: 0.029221
+  hero_health_rank_1:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.374429
+    y: 0.642857
+    width: 0.059361
+    height: 0.029221
+  enemy_health_rank_1:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.563470
+    y: 0.642857
+    width: 0.058447
+    height: 0.025974
+  enemy_health_rank_2:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.640183
+    y: 0.642857
+    width: 0.058447
+    height: 0.025974
+  enemy_health_rank_3:
+    validation_status: provisional
+    relative_to: game_frame
+    x: 0.768037
+    y: 0.642857
+    width: 0.058447
+    height: 0.025974
+  enemy_health_rank_4:
+    validation_status: provisional
+    relative_to: game_frame
+    x: 0.879452
+    y: 0.642857
+    width: 0.058447
+    height: 0.025974
+  action_bar:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.268493
+    y: 0.694805
+    width: 0.200000
+    height: 0.077922
+  skill_slot_1:
+    validation_status: confirmed
+    relative_to: action_bar
+    x: 0.009132
+    y: 0.062500
+    width: 0.191781
+    height: 0.875000
+  skill_slot_2:
+    validation_status: confirmed
+    relative_to: action_bar
+    x: 0.210046
+    y: 0.062500
+    width: 0.191781
+    height: 0.875000
+  skill_slot_3:
+    validation_status: confirmed
+    relative_to: action_bar
+    x: 0.406393
+    y: 0.062500
+    width: 0.191781
+    height: 0.875000
+  skill_slot_4:
+    validation_status: confirmed
+    relative_to: action_bar
+    x: 0.607306
+    y: 0.062500
+    width: 0.191781
+    height: 0.875000
+  move_action_slot:
+    validation_status: confirmed
+    relative_to: action_bar
+    x: 0.808219
+    y: 0.062500
+    width: 0.191781
+    height: 0.875000
+  round_counter:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.473059
+    y: 0.045455
+    width: 0.052968
+    height: 0.097403
+  current_hero_panel:
+    validation_status: confirmed
+    relative_to: game_frame
+    x: 0.003653
+    y: 0.689935
+    width: 0.263014
+    height: 0.300325
+  active_hero_marker:
+    validation_status: provisional
+    relative_to: game_frame
+    x: 0.102283
+    y: 0.613636
+    width: 0.078539
+    height: 0.051948
