@@ -17,7 +17,9 @@ It does **not**:
 - simulate keyboard or mouse input
 - automatically perform recommended actions
 
-## Current status: Phase 2
+## Current status: Phase 3A
+
+Phase 2 calibration is **accepted** for windowed **1111 x 654**. Do not change those coordinates unless a new resolution profile is added.
 
 Phase 1 can:
 
@@ -35,9 +37,24 @@ Phase 2 adds:
 - a labeled debug preview overlaid on a captured screenshot
 - a pixel-to-normalized helper for manual YAML edits
 
-Later phases (combat-state recognition, strategy, overlay, telemetry, and ML) are **not implemented yet**.
+Phase 3A adds a pure-domain combat package (`ddca.combat`) that can represent a battle snapshot in memory and as deterministic JSON. It does not look at pixels.
 
-GPU acceleration and PyTorch are not used in Phase 1 or Phase 2.
+Later phases (Phase 3B visual recognition, OCR, ML/DL, strategy scoring, overlay, telemetry, and continuous capture) are **not implemented yet**.
+
+GPU acceleration and PyTorch are not used.
+
+## Phase 3A data flow
+
+```
+Phase 1 capture (PNG + metadata)
+    -> Phase 2 calibration ROIs (1111x654, accepted)
+    -> [Phase 3B recognition: not implemented]
+    -> Observation / HeroObservation / EnemyObservation / ActionObservation
+    -> CombatState (validated snapshot, per-field confidence)
+    -> [Phase 4 strategy: not implemented]
+```
+
+Phase 3A only defines the observation and state models, their invariants, and JSON round-trip. Fill `CombatState` with synthetic or later recognized values; do not store screenshot arrays on these objects.
 
 ## Requirements
 
@@ -149,13 +166,16 @@ Labeled calibration previews default to `output/calibration_preview.png`. That d
 
 - Windows only
 - One-shot capture; no continuous capture loop
-- Calibration currently validated for one windowed size: 1111 x 654
+- Calibration currently accepted for one windowed size: 1111 x 654
 - `game_frame` and character ranks are confirmed; HUD boxes were fitted from one battle screenshot and still need human review of the v3 preview
 - The action bar covers four selected skill slots plus Move; later strategy logic must treat Move as a legal combat action
 - `active_hero_marker` still requires validation using a screenshot from another hero's turn
 - Enemy ranks 3 and 4 health regions remain provisional because those positions are empty in the calibration screenshot
 - Status-effect icon regions are uncalibrated and require a screenshot with visible Bleed, Blight, Stun, Buff, or Debuff
-- Phase 3 has not started; no combat-state recognition, strategy, overlay, telemetry, or machine learning is implemented
+- Phase 3A is a domain model only: no OCR, no OpenCV recognition, no template matching, no classifiers, no Steam/game-file parsing, and no filling of CombatState from pixels
+- Phase 3B visual recognition is not implemented
+- Phase 4 strategy scoring is not implemented
+- Overlay, telemetry, continuous capture, and ML/DL ranking are not implemented
 - Window matching is by title only
 - Capture uses the Win32 window rectangle, including OS chrome; `game_frame` is the 16:9 client inside that chrome
 
@@ -164,11 +184,12 @@ Recommendations in later phases will be labeled as best estimated actions under 
 ## Roadmap
 
 1. **Phase 1** — Repository foundation and Windows game capture
-2. **Phase 2** — Calibration and region-of-interest system (current)
-3. **Phase 3** — Structured combat-state domain model
-4. **Phase 4** — Deterministic rule-based strategy baseline
-5. **Phase 5** — Combat-state visual recognition
-6. **Phase 6** — Real-time English overlay
-7. **Phase 7** — Telemetry and dataset collection
-8. **Phase 8** — ML ranking after a labeled dataset exists
-9. **Phase 9** — Evaluation and portfolio presentation
+2. **Phase 2** — Calibration and region-of-interest system (accepted for windowed 1111 x 654)
+3. **Phase 3A** — Structured combat observation and state models (current)
+4. **Phase 3B** — Combat-state visual recognition (unimplemented)
+5. **Phase 4** — Deterministic rule-based strategy baseline (unimplemented)
+6. **Phase 5** — Remaining recognition and robustness work
+7. **Phase 6** — Real-time English overlay
+8. **Phase 7** — Telemetry and dataset collection
+9. **Phase 8** — ML ranking after a labeled dataset exists
+10. **Phase 9** — Evaluation and portfolio presentation
