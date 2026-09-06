@@ -53,6 +53,18 @@ class ActionState:
     is_available: ObservedValue[bool]
     legal_target_ranks: ObservedValue[tuple[int, ...]]
 
+    @property
+    def ui_slot(self) -> ActionSlot:
+        """Calibration slot name. Alias of ``slot`` for lookup by ui_slot."""
+
+        return self.slot
+
+    @property
+    def action_id(self) -> str:
+        """Stable action identity: the Phase 2 slot string."""
+
+        return self.slot.value
+
     def __post_init__(self) -> None:
         if not isinstance(self.slot, ActionSlot):
             raise InvalidCombatStateError(f"ActionState.slot must be an ActionSlot (got {self.slot!r}).")

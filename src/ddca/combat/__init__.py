@@ -1,5 +1,7 @@
 """Structured combat observations and state. Standard library only."""
 
+from __future__ import annotations
+
 from ddca.combat.actions import ActionState
 from ddca.combat.actors import EnemyState, HeroState
 from ddca.combat.effects import StatusEffect

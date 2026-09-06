@@ -3,18 +3,30 @@
 from __future__ import annotations
 
 import ast
+from datetime import timezone
 from pathlib import Path
 
+from ddca.combat.effects import StatusEffect
+from ddca.combat.enums import ActionKind, ActionSlot
+from ddca.combat.observed import Confidence
 from ddca.combat.serialize import combat_state_from_json, combat_state_to_json
 from ddca.combat.state import CombatState
 
-from tests.unit.combat_fixtures import make_combat_state, make_hero_observation
+from tests.unit.combat_fixtures import (
+    SYNTHETIC_CAPTURED_AT,
+    action_by_slot,
+    enemy_by_id,
+    hero_by_id,
+    make_combat_state,
+    make_hero_observation,
+)
 
 COMBAT_DIR = Path(__file__).resolve().parents[2] / "src" / "ddca" / "combat"
 ALLOWED_IMPORT_ROOTS = {
     "__future__",
     "collections",
     "dataclasses",
+    "datetime",
     "enum",
     "json",
     "math",
@@ -38,12 +50,32 @@ def test_json_encoding_is_deterministic() -> None:
     assert first == combat_state_to_json(combat_state_from_json(first))
 
 
-def test_tuples_survive_list_encoding_in_json() -> None:
-    state = make_combat_state()
-    restored = combat_state_from_json(combat_state_to_json(state))
-    assert restored.enemies[0].occupied_ranks.value == (1, 2)
-    assert restored.actions[0].legal_target_ranks.value == (1, 2)
-    assert restored.heroes[0].status_effects.value[0].effect_id == "bleed"
+def test_nested_values_survive_json_round_trip_exactly() -> None:
+    original = make_combat_state()
+    restored = combat_state_from_json(combat_state_to_json(original))
+    assert restored == original
+
+    highwayman = hero_by_id(restored.heroes, "hero_rank_1")
+    giant = enemy_by_id(restored.enemies, "enemy_large")
+    opened_vein = action_by_slot(restored.actions, ActionSlot.SKILL_1)
+    move = action_by_slot(restored.actions, ActionSlot.MOVE)
+    effects = highwayman.status_effects.value
+
+    assert restored.frame.captured_at == SYNTHETIC_CAPTURED_AT
+    assert restored.frame.captured_at is not None
+    assert restored.frame.captured_at.tzinfo is timezone.utc
+    assert giant.occupied_ranks.value == (1, 2)
+    assert isinstance(giant.occupied_ranks.value, tuple)
+    assert opened_vein.legal_target_ranks.value == (1, 2)
+    assert isinstance(opened_vein.legal_target_ranks.value, tuple)
+    assert opened_vein.slot is ActionSlot.SKILL_1
+    assert opened_vein.kind is ActionKind.SKILL
+    assert move.kind is ActionKind.MOVE
+    assert isinstance(highwayman.current_hp.confidence, Confidence)
+    assert effects is not None
+    bleed = next(effect for effect in effects if effect.effect_id == "bleed")
+    assert isinstance(bleed, StatusEffect)
+    assert bleed.stacks.value == 3
 
 
 def test_hero_observation_json_includes_frame_not_pixels() -> None:

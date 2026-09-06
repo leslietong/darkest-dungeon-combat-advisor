@@ -73,6 +73,12 @@ class HeroState:
     maximum_stress: ObservedValue[int]
     status_effects: ObservedValue[tuple[StatusEffect, ...]]
 
+    @property
+    def entity_id(self) -> str:
+        """Stable instance id. Alias of ``actor_id`` for lookup by entity_id."""
+
+        return self.actor_id
+
     def __post_init__(self) -> None:
         object.__setattr__(self, "actor_id", require_actor_id(self.actor_id, context="HeroState.actor_id"))
         if self.rank.status is ObservationStatus.OBSERVED:
@@ -134,6 +140,12 @@ class EnemyState:
     current_hp: ObservedValue[int]
     maximum_hp: ObservedValue[int]
     status_effects: ObservedValue[tuple[StatusEffect, ...]]
+
+    @property
+    def entity_id(self) -> str:
+        """Stable instance id. Alias of ``actor_id`` for lookup by entity_id."""
+
+        return self.actor_id
 
     def __post_init__(self) -> None:
         object.__setattr__(

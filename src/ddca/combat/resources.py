@@ -29,13 +29,14 @@ def require_non_empty_str(value: object, *, context: str) -> str:
 
 
 def require_actor_id(value: object, *, context: str) -> str:
-    """Return a trimmed instance id used only within one combat snapshot."""
+    """Return a non-empty instance id. Whitespace is rejected, not repaired."""
 
-    if not isinstance(value, str) or not value.strip():
+    if not isinstance(value, str) or not value.strip() or value != value.strip():
         raise InvalidCombatStateError(
-            f"{context} must be a non-empty actor id (got {value!r})."
+            f"{context} must be a non-empty actor id without leading or trailing "
+            f"whitespace (got {value!r}). Invalid references are not rewritten."
         )
-    return value.strip()
+    return value
 
 
 def validate_observed_int(field: ObservedValue[int], *, context: str) -> None:

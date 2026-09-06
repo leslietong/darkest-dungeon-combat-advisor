@@ -19,7 +19,7 @@ It does **not**:
 
 ## Current status: Phase 3A
 
-Phase 2 calibration is **accepted** for windowed **1111 x 654**. Do not change those coordinates unless a new resolution profile is added.
+The windowed **1111 x 654 v3** calibration was **manually reviewed and accepted**. Other resolutions, large enemies, tooltip states, status icons, and other battle states remain unverified. Do not change those coordinates unless a new resolution profile is added.
 
 Phase 1 can:
 
@@ -31,7 +31,7 @@ Phase 1 can:
 Phase 2 adds:
 
 - a captured-window normalized coordinate system (`0` to `1`)
-- a YAML calibration profile for one validated resolution: **1111 x 654** windowed
+- a YAML calibration profile for the manually reviewed and accepted windowed **1111 x 654 v3** layout; other resolutions, large enemies, tooltip states, status icons, and other battle states remain unverified
 - named regions for the game frame, combat area, hero/enemy ranks 1-4, per-rank health bars, four skill slots plus Move, round counter, and current-hero panel
 - YAML `validation_status: confirmed` or `provisional` so schema validity is distinct from visual confirmation
 - a labeled debug preview overlaid on a captured screenshot
@@ -39,22 +39,27 @@ Phase 2 adds:
 
 Phase 3A adds a pure-domain combat package (`ddca.combat`) that can represent a battle snapshot in memory and as deterministic JSON. It does not look at pixels.
 
-Later phases (Phase 3B visual recognition, OCR, ML/DL, strategy scoring, overlay, telemetry, and continuous capture) are **not implemented yet**.
+**Not implemented:** Phase 3B recognition, strategy scoring, estimated win probability, continuous capture, and the external companion window.
 
 GPU acceleration and PyTorch are not used.
 
-## Phase 3A data flow
+## Phase 3A and the Observation → CombatState boundary
+
+Phase 3A stops at structured data. It does not fill those structures from pixels.
+
+- **Observation** types (`Observation`, `HeroObservation`, `EnemyObservation`, `ActionObservation`) bind per-field `ObservedValue`s to a `FrameReference` and optional `RegionEvidence`. They may name an ROI; they never store screenshot arrays.
+- **State** types (`HeroState`, `EnemyState`, `ActionState`, `CombatState`) are the validated snapshot used by later phases. `HeroObservation.to_state()` (and the enemy/action equivalents) copy observed fields into state objects and drop evidence. `CombatState.from_observations(...)` assembles a party-level snapshot and enforces rank, identity, and action-slot invariants.
+- Recognition that would populate observations from a capture is **Phase 3B** and is not implemented. Strategy ranking and estimated win probability belong in a later result model, not on `CombatState`. An external companion window is a future direction only; it is not a current capability.
 
 ```
 Phase 1 capture (PNG + metadata)
-    -> Phase 2 calibration ROIs (1111x654, accepted)
+    -> Phase 2 calibration ROIs (1111x654 v3, manually reviewed and accepted)
     -> [Phase 3B recognition: not implemented]
     -> Observation / HeroObservation / EnemyObservation / ActionObservation
     -> CombatState (validated snapshot, per-field confidence)
-    -> [Phase 4 strategy: not implemented]
+    -> [strategy / estimated win probability: not implemented]
+    -> [external companion window: future direction only]
 ```
-
-Phase 3A only defines the observation and state models, their invariants, and JSON round-trip. Fill `CombatState` with synthetic or later recognized values; do not store screenshot arrays on these objects.
 
 ## Requirements
 
@@ -160,22 +165,24 @@ Labeled calibration previews default to `output/calibration_preview.png`. That d
 
 **Status icons.** The current battle screenshot does not show Bleed, Blight, Stun, Buff, or Debuff icons. Status-icon ROIs are therefore omitted and are not visually confirmed. Capture a second combat screenshot with visible status effects before adding them.
 
-**Wrong resolution.** Phase 2 is validated at 1111 x 654 windowed. Other sizes still map normalized coordinates, but they are not treated as reliable yet. Recapture at 1111 x 654 or add a new YAML profile.
+**Wrong resolution.** Only the windowed 1111 x 654 v3 calibration was manually reviewed and accepted. Other sizes still map normalized coordinates, but those resolutions and other battle configurations remain unverified. Recapture at 1111 x 654 or add a new YAML profile.
 
 ## Current limitations
 
 - Windows only
 - One-shot capture; no continuous capture loop
-- Calibration currently accepted for one windowed size: 1111 x 654
-- `game_frame` and character ranks are confirmed; HUD boxes were fitted from one battle screenshot and still need human review of the v3 preview
+- Only the windowed 1111 x 654 v3 calibration was manually reviewed and accepted; other resolutions, large enemies, tooltip states, status icons, and other battle states remain unverified
+- `game_frame` and character ranks are confirmed on that accepted v3 profile; HUD boxes were fitted from one battle screenshot
 - The action bar covers four selected skill slots plus Move; later strategy logic must treat Move as a legal combat action
-- `active_hero_marker` still requires validation using a screenshot from another hero's turn
+- `active_hero_marker` remains provisional and still requires validation using a screenshot from another hero's turn
 - Enemy ranks 3 and 4 health regions remain provisional because those positions are empty in the calibration screenshot
 - Status-effect icon regions are uncalibrated and require a screenshot with visible Bleed, Blight, Stun, Buff, or Debuff
 - Phase 3A is a domain model only: no OCR, no OpenCV recognition, no template matching, no classifiers, no Steam/game-file parsing, and no filling of CombatState from pixels
 - Phase 3B visual recognition is not implemented
-- Phase 4 strategy scoring is not implemented
-- Overlay, telemetry, continuous capture, and ML/DL ranking are not implemented
+- Strategy scoring and estimated win probability are not implemented
+- Continuous capture is not implemented
+- The external companion window is not implemented; it is a future direction only
+- Overlay, telemetry, and ML/DL ranking are not implemented
 - Window matching is by title only
 - Capture uses the Win32 window rectangle, including OS chrome; `game_frame` is the 16:9 client inside that chrome
 
@@ -184,12 +191,12 @@ Recommendations in later phases will be labeled as best estimated actions under 
 ## Roadmap
 
 1. **Phase 1** — Repository foundation and Windows game capture
-2. **Phase 2** — Calibration and region-of-interest system (accepted for windowed 1111 x 654)
+2. **Phase 2** — Calibration and region-of-interest system (1111 x 654 v3 manually reviewed and accepted; other layouts unverified)
 3. **Phase 3A** — Structured combat observation and state models (current)
 4. **Phase 3B** — Combat-state visual recognition (unimplemented)
-5. **Phase 4** — Deterministic rule-based strategy baseline (unimplemented)
+5. **Phase 4** — Deterministic rule-based strategy baseline and estimated win probability (unimplemented)
 6. **Phase 5** — Remaining recognition and robustness work
-7. **Phase 6** — Real-time English overlay
+7. **Phase 6** — Real-time English overlay / external companion window (future direction; not implemented)
 8. **Phase 7** — Telemetry and dataset collection
 9. **Phase 8** — ML ranking after a labeled dataset exists
 10. **Phase 9** — Evaluation and portfolio presentation

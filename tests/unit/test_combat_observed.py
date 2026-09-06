@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 
 from ddca.combat.enums import EvidenceSource, ObservationStatus
@@ -53,16 +55,30 @@ def test_factory_helpers_set_expected_status() -> None:
     assert not_applicable().value is None
 
 
+def test_unknown_does_not_coerce_to_empty_defaults() -> None:
+    field = unknown()
+    assert field.value is None
+    assert field.value is not False
+    assert field.value != 0
+    assert field.value != ""
+    assert field.value != ()
+
+
 def test_confidence_accepts_unit_interval() -> None:
     assert Confidence(score=0).score == 0.0
     assert Confidence(score=1).score == 1.0
     assert Confidence(score=0.33).score == pytest.approx(0.33)
 
 
-@pytest.mark.parametrize("score", [-0.01, 1.01, float("nan"), float("inf"), True, "0.5"])
+@pytest.mark.parametrize("score", [-0.01, 1.01, float("nan"), float("inf"), float("-inf"), True, "0.5"])
 def test_confidence_rejects_invalid_scores(score: object) -> None:
     with pytest.raises(InvalidCombatStateError, match="Confidence"):
         Confidence(score=score)  # type: ignore[arg-type]
+
+
+def test_confidence_from_dict_rejects_bool() -> None:
+    with pytest.raises(InvalidCombatStateError, match="Confidence"):
+        Confidence.from_dict({"score": True})
 
 
 def test_observed_value_round_trip_dict() -> None:
@@ -94,6 +110,17 @@ def test_raw_bytes_are_rejected() -> None:
 def test_frame_reference_requires_capture_id() -> None:
     with pytest.raises(InvalidCombatStateError, match="capture_id"):
         FrameReference(capture_id="  ")
+
+
+def test_frame_reference_rejects_naive_datetime() -> None:
+    with pytest.raises(InvalidCombatStateError, match="timezone-aware UTC"):
+        FrameReference(capture_id="synthetic", captured_at=datetime(2026, 8, 27, 0, 0, 0))
+
+
+def test_frame_reference_normalizes_iso_string_to_utc_datetime() -> None:
+    frame = FrameReference(capture_id="synthetic", captured_at="2026-08-27T03:00:16Z")
+    assert frame.captured_at == datetime(2026, 8, 27, 3, 0, 16, tzinfo=timezone.utc)
+    assert frame.to_dict()["captured_at"] == "2026-08-27T03:00:16Z"
 
 
 def test_region_evidence_rejects_empty_size() -> None:

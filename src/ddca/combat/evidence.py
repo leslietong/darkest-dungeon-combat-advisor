@@ -2,11 +2,55 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
+from datetime import datetime, timezone
 
 from ddca.combat.errors import InvalidCombatStateError
 from ddca.combat.observed import Confidence, as_confidence
+
+
+def parse_utc_datetime(value: object) -> datetime | None:
+    """Parse a timezone-aware UTC datetime from an object or ISO-8601 string."""
+
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        moment = value
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            raise InvalidCombatStateError(
+                "FrameReference.captured_at must be a UTC datetime, not an empty string."
+            )
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        try:
+            moment = datetime.fromisoformat(text)
+        except ValueError as exc:
+            raise InvalidCombatStateError(
+                f"FrameReference.captured_at is not a valid ISO-8601 datetime (got {value!r})."
+            ) from exc
+    else:
+        raise InvalidCombatStateError(
+            "FrameReference.captured_at must be a timezone-aware UTC datetime "
+            f"or ISO-8601 string (got {type(value).__name__})."
+        )
+    if moment.tzinfo is None:
+        raise InvalidCombatStateError(
+            "FrameReference.captured_at must be timezone-aware UTC. "
+            "Naive datetimes are rejected so JSON round-trips stay exact."
+        )
+    return moment.astimezone(timezone.utc)
+
+
+def format_utc_datetime(value: datetime) -> str:
+    """Serialize a UTC datetime with a trailing Z."""
+
+    text = value.astimezone(timezone.utc).isoformat()
+    if text.endswith("+00:00"):
+        return text[:-6] + "Z"
+    return text
 
 
 @dataclass(frozen=True)
@@ -14,7 +58,7 @@ class FrameReference:
     """Identifies a captured frame. Paths are optional; pixels are never stored."""
 
     capture_id: str
-    captured_at: str | None = None
+    captured_at: datetime | None = None
     image_path: str | None = None
     image_width: int | None = None
     image_height: int | None = None
@@ -26,10 +70,9 @@ class FrameReference:
                 "Use a timestamped capture id such as capture_20260820T030016Z."
             )
         object.__setattr__(self, "capture_id", self.capture_id.strip())
-        for name in ("captured_at", "image_path"):
-            raw = getattr(self, name)
-            if raw is not None and not isinstance(raw, str):
-                raise InvalidCombatStateError(f"FrameReference.{name} must be a string or None.")
+        object.__setattr__(self, "captured_at", parse_utc_datetime(self.captured_at))
+        if self.image_path is not None and not isinstance(self.image_path, str):
+            raise InvalidCombatStateError("FrameReference.image_path must be a string or None.")
         for name in ("image_width", "image_height"):
             raw = getattr(self, name)
             if raw is None:
@@ -40,9 +83,10 @@ class FrameReference:
                 )
 
     def to_dict(self) -> dict[str, object]:
+        captured_at = self.captured_at
         return {
             "capture_id": self.capture_id,
-            "captured_at": self.captured_at,
+            "captured_at": None if captured_at is None else format_utc_datetime(captured_at),
             "image_path": self.image_path,
             "image_width": self.image_width,
             "image_height": self.image_height,
@@ -52,7 +96,7 @@ class FrameReference:
     def from_dict(cls, payload: Mapping[str, object]) -> FrameReference:
         return cls(
             capture_id=str(payload["capture_id"]),
-            captured_at=_optional_str(payload.get("captured_at")),
+            captured_at=payload.get("captured_at"),
             image_path=_optional_str(payload.get("image_path")),
             image_width=_optional_int(payload.get("image_width")),
             image_height=_optional_int(payload.get("image_height")),

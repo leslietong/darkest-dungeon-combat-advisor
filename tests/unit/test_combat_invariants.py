@@ -11,15 +11,16 @@ from ddca.combat.actions import ActionState
 from ddca.combat.enums import ActionKind, ActionSlot, EvidenceSource, ObservationStatus
 from ddca.combat.errors import InvalidCombatStateError
 from ddca.combat.observations import Observation
-from ddca.combat.observed import observed, unknown
+from ddca.combat.observed import unknown
 from ddca.combat.schema import COMBAT_SCHEMA_VERSION
 from ddca.combat.state import CombatState
 from ddca.vision.calibration import REQUIRED_REGIONS
 
 from tests.unit.combat_fixtures import (
-    default_actions,
-    default_enemies,
-    default_heroes,
+    action_by_id,
+    action_by_slot,
+    enemy_by_id,
+    hero_by_id,
     make_action_observation,
     make_combat_state,
     make_enemy,
@@ -52,6 +53,31 @@ def test_hero_rank_rejects_bool() -> None:
         )
 
 
+def test_unknown_hero_ranks_are_allowed() -> None:
+    heroes = (
+        replace(make_hero(actor_id="hero_a", rank=1), rank=unknown()),
+        replace(make_hero(actor_id="hero_b", rank=2), rank=unknown()),
+    )
+    state = make_combat_state(heroes=heroes, active_actor_id=ov("hero_a"))
+    assert hero_by_id(state.heroes, "hero_a").rank.value is None
+    assert hero_by_id(state.heroes, "hero_b").rank.status is ObservationStatus.UNKNOWN
+
+
+def test_hero_and_enemy_share_rank_numbers_independently() -> None:
+    state = make_combat_state(
+        heroes=(make_hero(actor_id="hero_front", rank=1),),
+        enemies=(make_enemy(actor_id="enemy_front", occupied_ranks=(1,)),),
+        active_actor_id=ov("hero_front"),
+    )
+    assert hero_by_id(state.heroes, "hero_front").rank.value == 1
+    assert enemy_by_id(state.enemies, "enemy_front").occupied_ranks.value == (1,)
+
+
+def test_actor_id_is_not_silently_trimmed() -> None:
+    with pytest.raises(InvalidCombatStateError, match="whitespace"):
+        make_hero(actor_id=" hero_rank_1")
+
+
 def test_duplicate_hero_ranks_are_rejected() -> None:
     heroes = (make_hero(actor_id="a", rank=1), make_hero(actor_id="b", rank=1))
     with pytest.raises(InvalidCombatStateError, match="both occupy rank 1"):
@@ -80,13 +106,37 @@ def test_enemy_occupied_ranks_cannot_be_empty() -> None:
         make_enemy(occupied_ranks=())
 
 
+def test_enemy_occupied_ranks_reject_bool() -> None:
+    with pytest.raises(InvalidCombatStateError, match="rank"):
+        make_enemy(occupied_ranks=(True,))  # type: ignore[arg-type]
+
+
+def test_enemy_occupied_ranks_reject_duplicates() -> None:
+    with pytest.raises(InvalidCombatStateError, match="duplicates"):
+        make_enemy(occupied_ranks=(2, 2))
+
+
+def test_enemy_occupied_ranks_are_ordered_and_in_range() -> None:
+    enemy = make_enemy(occupied_ranks=(2, 1))
+    assert enemy.occupied_ranks.value == (1, 2)
+    with pytest.raises(InvalidCombatStateError, match="outside 1-4"):
+        make_enemy(occupied_ranks=(0, 1))
+    with pytest.raises(InvalidCombatStateError, match="outside 1-4"):
+        make_enemy(occupied_ranks=(4, 5))
+
+
+def test_enemy_hp_current_cannot_exceed_maximum() -> None:
+    with pytest.raises(InvalidCombatStateError, match="exceeds maximum"):
+        make_enemy(current_hp=11, maximum_hp=10)
+
+
 def test_enemy_rank_overlap_is_rejected() -> None:
     enemies = (
         make_enemy(actor_id="left", occupied_ranks=(1, 2)),
         make_enemy(actor_id="right", occupied_ranks=(2, 3)),
     )
     with pytest.raises(InvalidCombatStateError, match="both occupy rank 2"):
-        make_combat_state(enemies=enemies, heroes=default_heroes())
+        make_combat_state(enemies=enemies)
 
 
 def test_hp_current_cannot_exceed_maximum() -> None:
@@ -137,6 +187,17 @@ def test_move_cannot_observe_a_skill_id() -> None:
         )
 
 
+def test_skill_slot_cannot_use_move_kind() -> None:
+    with pytest.raises(InvalidCombatStateError, match="requires kind skill"):
+        ActionState(
+            slot=ActionSlot.SKILL_1,
+            kind=ActionKind.MOVE,
+            skill_id=ov("opened_vein"),
+            is_available=ov(True),
+            legal_target_ranks=unknown(),
+        )
+
+
 def test_active_actor_must_exist_when_observed() -> None:
     with pytest.raises(InvalidCombatStateError, match="does not match"):
         make_combat_state(active_actor_id=ov("missing_actor"))
@@ -161,15 +222,18 @@ def test_action_slot_names_match_phase_2_calibration_keys() -> None:
 
 
 def test_per_field_confidence_is_not_a_single_global_score() -> None:
-    hero = make_hero(hp_score=0.95, class_score=0.4)
+    hero = make_hero(actor_id="hero_rank_1", hp_score=0.95, class_score=0.4)
     assert hero.current_hp.confidence.score != hero.class_id.confidence.score
     state = make_combat_state()
+    highwayman = hero_by_id(state.heroes, "hero_rank_1")
+    giant = enemy_by_id(state.enemies, "enemy_large")
+    opened_vein = action_by_slot(state.actions, ActionSlot.SKILL_1)
     scores = {
         state.round_number.confidence.score,
         state.active_actor_id.confidence.score,
-        state.heroes[0].current_hp.confidence.score,
-        state.enemies[0].enemy_type_id.confidence.score,
-        state.actions[0].skill_id.confidence.score,
+        highwayman.current_hp.confidence.score,
+        giant.enemy_type_id.confidence.score,
+        opened_vein.skill_id.confidence.score,
     }
     assert len(scores) > 1
 
@@ -186,8 +250,11 @@ def test_observations_convert_into_combat_state() -> None:
         actions=(action_obs, make_move()),
         active_actor_id=ov(hero_obs.actor_id),
     )
-    assert state.heroes[0] == hero_obs.to_state()
-    assert state.enemies[0].occupied_ranks.value == (1, 2)
+    assert hero_by_id(state.heroes, hero_obs.actor_id) == hero_obs.to_state()
+    assert enemy_by_id(state.enemies, enemy_obs.actor_id).occupied_ranks.value == (1, 2)
+    assert action_by_id(state.actions, "skill_slot_1").skill_id.value == "opened_vein"
+    assert action_by_slot(state.actions, ActionSlot.MOVE).kind is ActionKind.MOVE
+    assert action_by_id(state.actions, "move_action_slot").ui_slot is ActionSlot.MOVE
 
 
 def test_generic_observation_envelope_does_not_hold_pixels() -> None:
@@ -206,11 +273,16 @@ def test_stable_string_ids_allow_unknown_dlc_classes() -> None:
 
 def test_default_fixture_is_valid() -> None:
     state = make_combat_state()
-    assert len(state.heroes) == 4
-    assert state.enemies[0].occupied_ranks.value == (1, 2)
-    assert [action.slot for action in state.actions] == list(ActionSlot)
-    assert default_actions()[-1].kind is ActionKind.MOVE
-    assert default_heroes()[0].actor_id == "hero_rank_4"
-    assert default_enemies()[0].actor_id == "enemy_large"
-    assert make_hero_observation().evidence[0].region_name == "hero_rank_1"
+    assert {hero.actor_id for hero in state.heroes} == {
+        "hero_rank_1",
+        "hero_rank_2",
+        "hero_rank_3",
+        "hero_rank_4",
+    }
+    assert enemy_by_id(state.enemies, "enemy_large").occupied_ranks.value == (1, 2)
+    assert hero_by_id(state.heroes, "hero_rank_4").class_id.value == "vestal"
+    assert action_by_slot(state.actions, ActionSlot.MOVE).kind is ActionKind.MOVE
+    assert action_by_slot(state.actions, ActionSlot.SKILL_1).skill_id.value == "opened_vein"
+    assert {action.slot for action in state.actions} == set(ActionSlot)
+    assert any(item.region_name == "hero_rank_1" for item in make_hero_observation().evidence)
     assert EvidenceSource.MANUAL.value == "manual"

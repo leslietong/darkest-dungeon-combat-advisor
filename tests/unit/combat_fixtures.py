@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from datetime import datetime, timezone
+
 from ddca.combat.actions import ActionState
 from ddca.combat.actors import EnemyState, HeroState
 from ddca.combat.effects import StatusEffect
@@ -12,15 +15,45 @@ from ddca.combat.observed import ObservedValue, not_applicable, observed, unknow
 from ddca.combat.schema import COMBAT_SCHEMA_VERSION
 from ddca.combat.state import CombatState
 
+SYNTHETIC_CAPTURED_AT = datetime(2026, 8, 27, 3, 0, 16, tzinfo=timezone.utc)
+
 
 def synthetic_frame() -> FrameReference:
     return FrameReference(
         capture_id="synthetic_capture_001",
-        captured_at="2026-08-27T00:00:00Z",
+        captured_at=SYNTHETIC_CAPTURED_AT,
         image_path=None,
         image_width=1111,
         image_height=654,
     )
+
+
+def hero_by_id(heroes: Sequence[HeroState], entity_id: str) -> HeroState:
+    matched = [hero for hero in heroes if hero.entity_id == entity_id]
+    if len(matched) != 1:
+        raise AssertionError(f"expected exactly one hero {entity_id!r}, found {len(matched)}")
+    return matched[0]
+
+
+def enemy_by_id(enemies: Sequence[EnemyState], entity_id: str) -> EnemyState:
+    matched = [enemy for enemy in enemies if enemy.entity_id == entity_id]
+    if len(matched) != 1:
+        raise AssertionError(f"expected exactly one enemy {entity_id!r}, found {len(matched)}")
+    return matched[0]
+
+
+def action_by_slot(actions: Sequence[ActionState], ui_slot: ActionSlot) -> ActionState:
+    matched = [action for action in actions if action.ui_slot is ui_slot]
+    if len(matched) != 1:
+        raise AssertionError(f"expected exactly one action {ui_slot.value!r}, found {len(matched)}")
+    return matched[0]
+
+
+def action_by_id(actions: Sequence[ActionState], action_id: str) -> ActionState:
+    matched = [action for action in actions if action.action_id == action_id]
+    if len(matched) != 1:
+        raise AssertionError(f"expected exactly one action {action_id!r}, found {len(matched)}")
+    return matched[0]
 
 
 def ov(value: object, *, score: float = 1.0, source: EvidenceSource = EvidenceSource.MANUAL) -> ObservedValue:

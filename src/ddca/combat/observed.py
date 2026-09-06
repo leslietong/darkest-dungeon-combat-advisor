@@ -44,7 +44,12 @@ class Confidence:
     def from_dict(cls, payload: Mapping[str, object]) -> Confidence:
         if not isinstance(payload, Mapping) or "score" not in payload:
             raise InvalidCombatStateError("Confidence mapping must include a numeric 'score'.")
-        return cls(score=float(payload["score"]))  # type: ignore[arg-type]
+        score = payload["score"]
+        if isinstance(score, bool) or not isinstance(score, (int, float)):
+            raise InvalidCombatStateError(
+                f"Confidence score must be a number in [0, 1] (got {score!r})."
+            )
+        return cls(score=float(score))
 
 
 def as_confidence(value: Confidence | float) -> Confidence:
