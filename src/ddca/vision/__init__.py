@@ -1,5 +1,7 @@
 """Calibration and region-of-interest mapping for captured game windows."""
 
+from __future__ import annotations
+
 from ddca.vision.calibration import (
     DEFAULT_CALIBRATION_PATH,
     REQUIRED_REGIONS,
@@ -11,20 +13,35 @@ from ddca.vision.calibration import (
 )
 from ddca.vision.errors import (
     CalibrationError,
+    ExtractionError,
     InvalidCalibrationError,
     PreviewError,
     UnknownRegionError,
+)
+from ddca.vision.extraction import (
+    EXTRACTION_SCHEMA_VERSION,
+    CalibrationIdentity,
+    ExtractedRegion,
+    ExtractionFrame,
+    ExtractionManifest,
+    extract_regions,
 )
 from ddca.vision.geometry import NormalizedRect, PixelRect
 from ddca.vision.preview import draw_calibration_preview, save_calibration_preview
 
 __all__ = [
     "DEFAULT_CALIBRATION_PATH",
+    "EXTRACTION_SCHEMA_VERSION",
     "REQUIRED_REGIONS",
     "VALIDATION_CONFIRMED",
     "VALIDATION_PROVISIONAL",
     "CalibrationError",
+    "CalibrationIdentity",
     "CalibrationProfile",
+    "ExtractedRegion",
+    "ExtractionError",
+    "ExtractionFrame",
+    "ExtractionManifest",
     "InvalidCalibrationError",
     "NormalizedRect",
     "PixelRect",
@@ -32,6 +49,7 @@ __all__ = [
     "UnknownRegionError",
     "crop_region",
     "draw_calibration_preview",
+    "extract_regions",
     "load_calibration",
     "save_calibration_preview",
 ]

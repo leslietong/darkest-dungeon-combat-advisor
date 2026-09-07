@@ -17,7 +17,7 @@ It does **not**:
 - simulate keyboard or mouse input
 - automatically perform recommended actions
 
-## Current status: Phase 3A
+## Current status: Phase 3B-1
 
 The windowed **1111 x 654 v3** calibration was **manually reviewed and accepted**. Other resolutions, large enemies, tooltip states, status icons, and other battle states remain unverified. Do not change those coordinates unless a new resolution profile is added.
 
@@ -39,6 +39,8 @@ Phase 2 adds:
 
 Phase 3A adds a pure-domain combat package (`ddca.combat`) that can represent a battle snapshot in memory and as deterministic JSON. It does not look at pixels.
 
+Phase 3B-1 extracts configured ROIs from a static screenshot and writes lossless crops plus an evidence manifest. It performs no recognition or inference.
+
 **Not implemented:** Phase 3B recognition, strategy scoring, estimated win probability, continuous capture, and the external companion window.
 
 GPU acceleration and PyTorch are not used.
@@ -54,12 +56,27 @@ Phase 3A stops at structured data. It does not fill those structures from pixels
 ```
 Phase 1 capture (PNG + metadata)
     -> Phase 2 calibration ROIs (1111x654 v3, manually reviewed and accepted)
+    -> Phase 3B-1 static ROI crops + evidence manifest (pixels only)
     -> [Phase 3B recognition: not implemented]
     -> Observation / HeroObservation / EnemyObservation / ActionObservation
     -> CombatState (validated snapshot, per-field confidence)
     -> [strategy / estimated win probability: not implemented]
     -> [external companion window: future direction only]
 ```
+
+## Phase 3B-1: static ROI extraction
+
+`python -m ddca.vision.extraction_cli` crops every configured region (or a selected subset) from an existing screenshot. It writes PNG crops and `manifest.json`. It does not identify heroes, enemies, skills, HP, rounds, or statuses, and it does not build a `CombatState`.
+
+The schema 1 manifest records source-image and calibration SHA-256 hashes, a stable `frame_id` equal to the source-image digest, optional `captured_at_utc` from a matching capture sidecar, and `extracted_at_utc`. It stores the source basename only. Each region includes the calibration `validation_status` (`confirmed` or `provisional`). Duplicate `--region` values are ignored after the first occurrence, preserving request order.
+
+```powershell
+python -m ddca.vision.extraction_cli --image data/screenshots/capture_YYYYMMDDTHHMMSSZ.png --profile configs/calibration/windowed_1111x654.yaml --output-dir output/extractions/example
+```
+
+Optional: `--region skill_slot_1` (repeatable) and `--overwrite` to replace only that extraction's crops and manifest.
+
+`active_hero_marker` and enemy rank 3/4 health regions remain provisional. Status-icon ROIs remain undefined. Extraction only proves that a configured rectangle can be cropped.
 
 ## Requirements
 
@@ -178,6 +195,7 @@ Labeled calibration previews default to `output/calibration_preview.png`. That d
 - Enemy ranks 3 and 4 health regions remain provisional because those positions are empty in the calibration screenshot
 - Status-effect icon regions are uncalibrated and require a screenshot with visible Bleed, Blight, Stun, Buff, or Debuff
 - Phase 3A is a domain model only: no OCR, no OpenCV recognition, no template matching, no classifiers, no Steam/game-file parsing, and no filling of CombatState from pixels
+- Phase 3B-1 extracts configured ROIs and writes an evidence manifest; it does not recognize or infer game values
 - Phase 3B visual recognition is not implemented
 - Strategy scoring and estimated win probability are not implemented
 - Continuous capture is not implemented
@@ -192,11 +210,12 @@ Recommendations in later phases will be labeled as best estimated actions under 
 
 1. **Phase 1** — Repository foundation and Windows game capture
 2. **Phase 2** — Calibration and region-of-interest system (1111 x 654 v3 manually reviewed and accepted; other layouts unverified)
-3. **Phase 3A** — Structured combat observation and state models (current)
-4. **Phase 3B** — Combat-state visual recognition (unimplemented)
-5. **Phase 4** — Deterministic rule-based strategy baseline and estimated win probability (unimplemented)
-6. **Phase 5** — Remaining recognition and robustness work
-7. **Phase 6** — Real-time English overlay / external companion window (future direction; not implemented)
-8. **Phase 7** — Telemetry and dataset collection
-9. **Phase 8** — ML ranking after a labeled dataset exists
-10. **Phase 9** — Evaluation and portfolio presentation
+3. **Phase 3A** — Structured combat observation and state models
+4. **Phase 3B-1** — Static screenshot ROI extraction and evidence manifest (current)
+5. **Phase 3B** — Combat-state visual recognition (unimplemented)
+6. **Phase 4** — Deterministic rule-based strategy baseline and estimated win probability (unimplemented)
+7. **Phase 5** — Remaining recognition and robustness work
+8. **Phase 6** — Real-time English overlay / external companion window (future direction; not implemented)
+9. **Phase 7** — Telemetry and dataset collection
+10. **Phase 8** — ML ranking after a labeled dataset exists
+11. **Phase 9** — Evaluation and portfolio presentation

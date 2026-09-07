@@ -17,3 +17,7 @@ class UnknownRegionError(CalibrationError):
 
 class PreviewError(CalibrationError):
     """Drawing or saving a calibration preview failed."""
+
+
+class ExtractionError(CalibrationError):
+    """Static ROI extraction failed before any recognition step."""
