@@ -17,7 +17,7 @@ It does **not**:
 - simulate keyboard or mouse input
 - automatically perform recommended actions
 
-## Current status: Phase 3B-1
+## Current status: Phase 3B-2
 
 The windowed **1111 x 654 v3** calibration was **manually reviewed and accepted**. Other resolutions, large enemies, tooltip states, status icons, and other battle states remain unverified. Do not change those coordinates unless a new resolution profile is added.
 
@@ -41,7 +41,9 @@ Phase 3A adds a pure-domain combat package (`ddca.combat`) that can represent a 
 
 Phase 3B-1 extracts configured ROIs from a static screenshot and writes lossless crops plus an evidence manifest. It performs no recognition or inference.
 
-**Not implemented:** Phase 3B recognition, strategy scoring, estimated win probability, continuous capture, and the external companion window.
+Phase 3B-2 is a provisional deterministic baseline that classifies the four skill slots and Move as available, disabled, or unknown from those crops. It does not identify skill names.
+
+**Not implemented:** skill identity, legal targets, CombatState inference, strategy scoring, utility, estimated win probability, continuous capture, and the external companion window.
 
 GPU acceleration and PyTorch are not used.
 
@@ -51,13 +53,14 @@ Phase 3A stops at structured data. It does not fill those structures from pixels
 
 - **Observation** types (`Observation`, `HeroObservation`, `EnemyObservation`, `ActionObservation`) bind per-field `ObservedValue`s to a `FrameReference` and optional `RegionEvidence`. They may name an ROI; they never store screenshot arrays.
 - **State** types (`HeroState`, `EnemyState`, `ActionState`, `CombatState`) are the validated snapshot used by later phases. `HeroObservation.to_state()` (and the enemy/action equivalents) copy observed fields into state objects and drop evidence. `CombatState.from_observations(...)` assembles a party-level snapshot and enforces rank, identity, and action-slot invariants.
-- Recognition that would populate observations from a capture is **Phase 3B** and is not implemented. Strategy ranking and estimated win probability belong in a later result model, not on `CombatState`. An external companion window is a future direction only; it is not a current capability.
+- Phase 3B-2 can populate `ActionObservation.is_available` from the five action-slot crops. It leaves `skill_id` and `legal_target_ranks` unknown (Move `skill_id` is not applicable). Filling the rest of CombatState from pixels is not implemented. Strategy ranking and estimated win probability belong in a later result model, not on `CombatState`. An external companion window is a future direction only; it is not a current capability.
 
 ```
 Phase 1 capture (PNG + metadata)
     -> Phase 2 calibration ROIs (1111x654 v3, manually reviewed and accepted)
     -> Phase 3B-1 static ROI crops + evidence manifest (pixels only)
-    -> [Phase 3B recognition: not implemented]
+    -> Phase 3B-2 action-slot available/disabled/unknown (provisional)
+    -> [remaining Phase 3B recognition: not implemented]
     -> Observation / HeroObservation / EnemyObservation / ActionObservation
     -> CombatState (validated snapshot, per-field confidence)
     -> [strategy / estimated win probability: not implemented]
@@ -77,6 +80,26 @@ python -m ddca.vision.extraction_cli --image data/screenshots/capture_YYYYMMDDTH
 Optional: `--region skill_slot_1` (repeatable) and `--overwrite` to replace only that extraction's crops and manifest.
 
 `active_hero_marker` and enemy rank 3/4 health regions remain provisional. Status-icon ROIs remain undefined. Extraction only proves that a configured rectangle can be cropped.
+
+## Phase 3B-2: action-slot availability
+
+`python -m ddca.vision.action_state_cli` reads a Phase 3B-1 extraction directory and classifies `skill_slot_1`–`skill_slot_4` plus `move_action_slot`.
+
+Semantics:
+
+- **available** — `ObservedValue(value=True, status=observed, source=classifier)`
+- **disabled** — `ObservedValue(value=False, status=observed, source=classifier)`
+- **unknown** — `ObservedValue(value=None, status=unknown, source=classifier)`
+
+Unknown is never encoded as `False`. Disabled is never encoded as missing. The classifier uses inner-content chroma features (foreground ratio, brightness std, saturation, chromatic-pixel ratio) and keeps an abstention band between conservative disabled and available thresholds. Exact boundary values abstain to unknown because they have zero decision margin. A coloured border cannot make a grey inner icon available. A blank or nearly black crop is unknown, not disabled.
+
+Confidence uses a class-side normalized margin: disabled distance is divided by `disabled_max_chroma`, available distance by `1 - available_min_chroma`. Those independent [0, 1] margins then pass through the same saturating transform and an input-quality factor, capped at 0.85. This is provisional classifier confidence, not a calibrated probability. Each classification records `crop_sha256` from the exact crop PNG bytes. The Phase 3B-1 manifest schema is unchanged and still does not store per-crop hashes.
+
+```powershell
+python -m ddca.vision.action_state_cli --extraction-dir output/extractions/example --config configs/vision/action_slot_state_v1.yaml --output output/action_state/example.json
+```
+
+Skill identity remains unknown. Legal targets are not computed. `CombatState` is not created.
 
 ## Requirements
 
@@ -196,7 +219,8 @@ Labeled calibration previews default to `output/calibration_preview.png`. That d
 - Status-effect icon regions are uncalibrated and require a screenshot with visible Bleed, Blight, Stun, Buff, or Debuff
 - Phase 3A is a domain model only: no OCR, no OpenCV recognition, no template matching, no classifiers, no Steam/game-file parsing, and no filling of CombatState from pixels
 - Phase 3B-1 extracts configured ROIs and writes an evidence manifest; it does not recognize or infer game values
-- Phase 3B visual recognition is not implemented
+- Phase 3B-2 is a provisional chroma baseline for action-slot available/disabled/unknown only; skill identity is not recognized
+- CombatState inference from pixels remains unimplemented
 - Strategy scoring and estimated win probability are not implemented
 - Continuous capture is not implemented
 - The external companion window is not implemented; it is a future direction only
@@ -211,11 +235,12 @@ Recommendations in later phases will be labeled as best estimated actions under 
 1. **Phase 1** — Repository foundation and Windows game capture
 2. **Phase 2** — Calibration and region-of-interest system (1111 x 654 v3 manually reviewed and accepted; other layouts unverified)
 3. **Phase 3A** — Structured combat observation and state models
-4. **Phase 3B-1** — Static screenshot ROI extraction and evidence manifest (current)
-5. **Phase 3B** — Combat-state visual recognition (unimplemented)
-6. **Phase 4** — Deterministic rule-based strategy baseline and estimated win probability (unimplemented)
-7. **Phase 5** — Remaining recognition and robustness work
-8. **Phase 6** — Real-time English overlay / external companion window (future direction; not implemented)
-9. **Phase 7** — Telemetry and dataset collection
-10. **Phase 8** — ML ranking after a labeled dataset exists
-11. **Phase 9** — Evaluation and portfolio presentation
+4. **Phase 3B-1** — Static screenshot ROI extraction and evidence manifest (completed)
+5. **Phase 3B-2** — Provisional action-slot available/disabled/unknown baseline (current)
+6. **Phase 3B** — Remaining combat-state visual recognition (unimplemented)
+7. **Phase 4** — Deterministic rule-based strategy baseline and estimated win probability (unimplemented)
+8. **Phase 5** — Remaining recognition and robustness work
+9. **Phase 6** — Real-time English overlay / external companion window (future direction; not implemented)
+10. **Phase 7** — Telemetry and dataset collection
+11. **Phase 8** — ML ranking after a labeled dataset exists
+12. **Phase 9** — Evaluation and portfolio presentation

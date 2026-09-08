@@ -1,0 +1,21 @@
+schema_version: 1
+algorithm_id: action-slot-chroma-v1
+notes: >
+  Provisional v1 baseline for Darkest Dungeon 1 action-slot availability.
+  Thresholds were chosen from feature separation on the accepted windowed
+  1111x654 battle extraction (capture_20260820T030016Z.png) plus synthetic
+  border/inner controls. This is a very small sample. It does not claim to
+  generalize to other heroes, DLC, mods, colour filters, resolutions, or
+  tooltip/tutorial overlays. Classifier confidence uses a class-side
+  normalized margin, not raw chroma distance, and is not a gameplay
+  probability or a calibrated accuracy estimate.
+expected_crop_width: 42
+expected_crop_height: 42
+inner_border_margin: 4
+foreground_value_threshold: 18
+minimum_foreground_ratio: 0.08
+minimum_brightness_std: 8.0
+chromatic_saturation_threshold: 28
+disabled_max_chroma: 0.12
+available_min_chroma: 0.28
+confidence_distance_scale: 0.35

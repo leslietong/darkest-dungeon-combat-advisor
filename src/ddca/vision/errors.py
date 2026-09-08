@@ -21,3 +21,7 @@ class PreviewError(CalibrationError):
 
 class ExtractionError(CalibrationError):
     """Static ROI extraction failed before any recognition step."""
+
+
+class RecognitionError(CalibrationError):
+    """Visual recognition failed before CombatState inference."""
